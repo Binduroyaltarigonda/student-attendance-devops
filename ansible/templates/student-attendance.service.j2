@@ -1,0 +1,16 @@
+# Managed by Ansible
+[Unit]
+Description=Online Student Attendance System
+After=network.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+WorkingDirectory={{ app_home }}
+ExecStart={{ java_path | default(java_bin) }} {{ java_opts }} -jar {{ app_home }}/current.jar --spring.config.additional-location=file:{{ app_home }}/config/
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

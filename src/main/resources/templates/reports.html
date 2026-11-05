@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Reports')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="container">
+    <section class="page-head">
+        <div>
+            <h1>Attendance Report</h1>
+            <p class="muted">Minimum required attendance: <strong th:text="${threshold} + '%'">75%</strong></p>
+        </div>
+        <a class="btn ghost" th:href="@{/api/reports/summary}" target="_blank">View as JSON</a>
+    </section>
+
+    <section class="card">
+        <p class="muted" th:if="${#lists.isEmpty(summaries)}">No students yet.</p>
+        <table th:unless="${#lists.isEmpty(summaries)}">
+            <thead>
+            <tr>
+                <th>Roll No.</th><th>Name</th><th>Dept</th>
+                <th>Classes</th><th>Attended</th><th>Absent</th><th style="width: 30%">Attendance</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${summaries}" th:classappend="${s.isBelow(threshold)} ? 'row-warn'">
+                <td class="mono" th:text="${s.rollNumber()}">25MCA001</td>
+                <td th:text="${s.name()}">Name</td>
+                <td th:text="${s.department()}">MCA</td>
+                <td th:text="${s.totalClasses()}">0</td>
+                <td th:text="${s.attended()}">0</td>
+                <td th:text="${s.absent()}">0</td>
+                <td>
+                    <div class="bar-wrap">
+                        <div class="bar" th:classappend="${s.isBelow(threshold)} ? 'low'"
+                             th:style="'width:' + ${s.percentage()} + '%'"></div>
+                    </div>
+                    <span class="bar-label" th:text="${s.totalClasses() == 0} ? 'No classes yet' : (${s.percentage()} + '%')">0%</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

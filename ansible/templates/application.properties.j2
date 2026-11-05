@@ -1,0 +1,9 @@
+# Managed by Ansible — changes here are overwritten on the next deploy.
+server.port={{ app_port }}
+spring.datasource.url=jdbc:h2:file:{{ app_home }}/data/attendance-db
+logging.file.name={{ app_home }}/logs/application.log
+
+app.build-number={{ app_version }}
+app.environment={{ app_env }}
+info.app.git-commit={{ git_commit }}
+info.app.deployed-at={{ ansible_facts['date_time']['iso8601'] }}

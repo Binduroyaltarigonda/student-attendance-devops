@@ -1,0 +1,32 @@
+---
+# Defaults used by deploy.yml. Inventory variables (inventory.ini) override these.
+
+app_name: student-attendance
+app_port: 8081
+app_env: staging
+
+# Jenkins passes these on the command line (-e). Defaults let you run the playbook by hand.
+artifact_path: "{{ playbook_dir }}/../target/student-attendance.jar"
+app_version: "manual"
+git_commit: "n/a"
+
+# Install location on the target machine (Linux servers override this to /opt/student-attendance)
+app_home: "{{ ansible_facts['env']['HOME'] }}/student-attendance"
+app_user: "{{ ansible_facts['user_id'] }}"
+create_app_user: false
+
+# Java runtime
+install_java: false
+java_bin: java
+java_opts: "-Xms128m -Xmx512m"
+
+# Number of old release jars to keep for rollback
+keep_releases: 5
+
+# systemd on Linux, background process (pid file) everywhere else (e.g. macOS)
+use_systemd: "{{ ansible_facts['service_mgr'] == 'systemd' }}"
+
+# Health check
+health_url: "http://127.0.0.1:{{ app_port }}/actuator/health"
+health_retries: 40
+health_delay: 3

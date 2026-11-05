@@ -1,0 +1,75 @@
+---
+# Shared by deploy.yml and rollback.yml: restart the app and wait for health = UP
+
+- name: Find the java executable  # noqa command-instead-of-shell
+  ansible.builtin.shell: "command -v {{ java_bin }}"
+  register: java_lookup
+  changed_when: false
+
+- name: Remember java path
+  ansible.builtin.set_fact:
+    java_path: "{{ java_lookup.stdout | trim }}"
+
+# ---------- Restart: Linux (systemd) ----------
+- name: Install systemd service
+  ansible.builtin.template:
+    src: student-attendance.service.j2
+    dest: "/etc/systemd/system/{{ app_name }}.service"
+    mode: "0644"
+  when: use_systemd | bool
+
+- name: Restart service
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    state: restarted
+    enabled: true
+    daemon_reload: true
+  when: use_systemd | bool
+
+# ---------- Restart: macOS / no systemd (background process + pid file) ----------
+- name: Stop the running instance
+  ansible.builtin.shell: |
+    PID_FILE="{{ app_home }}/app.pid"
+    if [ -f "$PID_FILE" ]; then
+      PID=$(cat "$PID_FILE")
+      if kill -0 "$PID" 2>/dev/null; then
+        kill "$PID"
+        for i in $(seq 1 30); do
+          kill -0 "$PID" 2>/dev/null || break
+          sleep 1
+        done
+        kill -9 "$PID" 2>/dev/null || true
+        echo "stopped $PID"
+      fi
+      rm -f "$PID_FILE"
+    fi
+  register: stop_result
+  changed_when: "'stopped' in stop_result.stdout"
+  when: not (use_systemd | bool)
+
+- name: Start the application in the background
+  ansible.builtin.shell: |
+    nohup "{{ java_path }}" {{ java_opts }} -jar "{{ app_home }}/current.jar" \
+      --spring.config.additional-location=file:{{ app_home }}/config/ \
+      > "{{ app_home }}/logs/console.log" 2>&1 < /dev/null &
+    echo $! > "{{ app_home }}/app.pid"
+  args:
+    chdir: "{{ app_home }}"
+  environment:
+    JENKINS_NODE_COOKIE: dontKillMe
+    BUILD_ID: dontKillMe
+  changed_when: true
+  when: not (use_systemd | bool)
+
+# ---------- Verify ----------
+- name: Wait until the health endpoint reports UP
+  ansible.builtin.uri:
+    url: "{{ health_url }}"
+    return_content: true
+    status_code: 200
+  register: health
+  until: >-
+    health.status | default(0) == 200 and
+    (health.json | default({})).get('status', '') == 'UP'
+  retries: "{{ health_retries }}"
+  delay: "{{ health_delay }}"

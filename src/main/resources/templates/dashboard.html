@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <section class="page-head">
+        <div>
+            <h1>Dashboard</h1>
+            <p class="muted" th:text="${#temporals.format(today, 'EEEE, dd MMMM yyyy')}">Today</p>
+        </div>
+        <a class="btn primary" th:href="@{/attendance}">Mark today's attendance</a>
+    </section>
+
+    <section class="stats">
+        <article class="card stat">
+            <span class="label">Students</span>
+            <span class="value" th:text="${stats.totalStudents()}">0</span>
+            <span class="hint">registered</span>
+        </article>
+        <article class="card stat">
+            <span class="label">Classes held</span>
+            <span class="value" th:text="${stats.classesHeld()}">0</span>
+            <span class="hint">days with attendance</span>
+        </article>
+        <article class="card stat">
+            <span class="label">Today</span>
+            <span class="value" th:text="${stats.todayMarked()} + '/' + ${stats.totalStudents()}">0/0</span>
+            <span class="hint">
+                <span class="tag present" th:text="${stats.todayPresent()} + ' present'">0 present</span>
+                <span class="tag late" th:text="${stats.todayLate()} + ' late'">0 late</span>
+                <span class="tag absent" th:text="${stats.todayAbsent()} + ' absent'">0 absent</span>
+            </span>
+        </article>
+        <article class="card stat accent">
+            <span class="label">Overall attendance</span>
+            <span class="value" th:text="${stats.overallPercentage()} + '%'">0%</span>
+            <span class="hint" th:text="${stats.lowAttendanceCount()} + ' student(s) below ' + ${threshold} + '%'">0 below</span>
+        </article>
+    </section>
+
+    <section class="card">
+        <div class="card-head">
+            <h2>Students below <span th:text="${threshold}">75</span>% attendance</h2>
+            <a th:href="@{/reports}">Full report →</a>
+        </div>
+        <p class="muted" th:if="${#lists.isEmpty(lowAttendance)}">Everyone is above the threshold. 🎉</p>
+        <table th:unless="${#lists.isEmpty(lowAttendance)}">
+            <thead>
+            <tr><th>Roll No.</th><th>Name</th><th>Attended</th><th>Attendance</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${lowAttendance}">
+                <td class="mono" th:text="${s.rollNumber()}">25MCA001</td>
+                <td th:text="${s.name()}">Name</td>
+                <td th:text="${s.attended()} + ' / ' + ${s.totalClasses()}">0 / 0</td>
+                <td><span class="tag absent" th:text="${s.percentage()} + '%'">0%</span></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

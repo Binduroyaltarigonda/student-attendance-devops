@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Students')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <section class="page-head">
+        <div>
+            <h1>Students</h1>
+            <p class="muted"><span th:text="${#lists.size(students)}">0</span> registered</p>
+        </div>
+    </section>
+
+    <div class="grid-2">
+        <section class="card">
+            <h2>Add a student</h2>
+            <form th:action="@{/students}" th:object="${student}" method="post" class="form" novalidate>
+                <label>Roll number
+                    <input type="text" th:field="*{rollNumber}" placeholder="25MCA001" maxlength="20">
+                    <small class="field-error" th:if="${#fields.hasErrors('rollNumber')}" th:errors="*{rollNumber}"></small>
+                </label>
+                <label>Full name
+                    <input type="text" th:field="*{name}" placeholder="Student name" maxlength="100">
+                    <small class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></small>
+                </label>
+                <div class="row">
+                    <label>Department
+                        <input type="text" th:field="*{department}" placeholder="MCA" maxlength="50">
+                        <small class="field-error" th:if="${#fields.hasErrors('department')}" th:errors="*{department}"></small>
+                    </label>
+                    <label>Semester
+                        <input type="number" th:field="*{semester}" min="1" max="8">
+                        <small class="field-error" th:if="${#fields.hasErrors('semester')}" th:errors="*{semester}"></small>
+                    </label>
+                </div>
+                <label>Email <span class="muted">(optional)</span>
+                    <input type="email" th:field="*{email}" placeholder="name@example.edu" maxlength="120">
+                    <small class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></small>
+                </label>
+                <button type="submit" class="btn primary">Add student</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>All students</h2>
+            <p class="muted" th:if="${#lists.isEmpty(students)}">No students yet. Add one using the form.</p>
+            <table th:unless="${#lists.isEmpty(students)}">
+                <thead>
+                <tr><th>Roll No.</th><th>Name</th><th>Dept</th><th>Sem</th><th></th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="s : ${students}">
+                    <td class="mono" th:text="${s.rollNumber}">25MCA001</td>
+                    <td>
+                        <span th:text="${s.name}">Name</span>
+                        <small class="muted block" th:if="${s.email}" th:text="${s.email}">email</small>
+                    </td>
+                    <td th:text="${s.department}">MCA</td>
+                    <td th:text="${s.semester}">1</td>
+                    <td class="right">
+                        <form th:action="@{/students/{id}/delete(id=${s.id})}" method="post"
+                              onsubmit="return confirm('Delete this student and their attendance?');">
+                            <button type="submit" class="btn ghost danger small">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

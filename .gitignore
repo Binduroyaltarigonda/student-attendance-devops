@@ -1,0 +1,16 @@
+# Maven build output
+target/
+
+# Local H2 database and logs created when running the app
+data/
+logs/
+*.log
+
+# Ansible
+*.retry
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store

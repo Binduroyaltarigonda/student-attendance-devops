@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · Student Attendance'">Student Attendance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<header th:fragment="nav" class="topbar">
+    <a class="brand" th:href="@{/}">
+        <span class="brand-mark">✓</span>
+        <span>AttendEase<small>Online Student Attendance</small></span>
+    </a>
+    <nav>
+        <a th:href="@{/}" th:classappend="${activePage == 'dashboard'} ? 'active'">Dashboard</a>
+        <a th:href="@{/students}" th:classappend="${activePage == 'students'} ? 'active'">Students</a>
+        <a th:href="@{/attendance}" th:classappend="${activePage == 'attendance'} ? 'active'">Mark Attendance</a>
+        <a th:href="@{/reports}" th:classappend="${activePage == 'reports'} ? 'active'">Reports</a>
+    </nav>
+</header>
+
+<div th:fragment="flash">
+    <div class="alert success" th:if="${success}" th:text="${success}">Saved</div>
+    <div class="alert error" th:if="${error}" th:text="${error}">Error</div>
+</div>
+
+<footer th:fragment="footer" class="footer">
+    <span>Online Student Attendance System</span>
+    <span class="pill">
+        v<span th:text="${appVersion}">1.0.0</span>
+        · build #<span th:text="${buildNumber}">local</span>
+        · <span th:text="${appEnvironment}">development</span>
+    </span>
+    <span>Delivered by GitHub → Jenkins → Maven → Ansible</span>
+</footer>
+
+</body>
+</html>

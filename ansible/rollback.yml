@@ -1,0 +1,56 @@
+---
+# Rolls back to the previous release kept in {{ app_home }}/releases.
+#
+#   cd ansible && ansible-playbook rollback.yml --limit local
+#   ansible-playbook rollback.yml --limit local -e rollback_to=12     # a specific build number
+
+- name: Roll back Online Student Attendance System
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: List releases, newest first
+      ansible.builtin.shell: |
+        set -o pipefail
+        ls -1t "{{ app_home }}/releases"/*.jar
+      args:
+        executable: /bin/bash
+      register: releases
+      changed_when: false
+
+    - name: Find the release current.jar points to
+      ansible.builtin.stat:
+        path: "{{ app_home }}/current.jar"
+      register: current
+
+    - name: Choose the release to roll back to
+      ansible.builtin.set_fact:
+        target_jar: >-
+          {{ app_home ~ '/releases/' ~ app_name ~ '-' ~ rollback_to ~ '.jar'
+             if rollback_to is defined
+             else (releases.stdout_lines | reject('equalto', current.stat.lnk_source | default('')) | first | default('')) }}
+
+    - name: Check the chosen release exists
+      ansible.builtin.stat:
+        path: "{{ target_jar }}"
+      register: target
+
+    - name: Stop if there is nothing to roll back to
+      ansible.builtin.assert:
+        that: target_jar | length > 0 and target.stat.exists
+        fail_msg: "No release to roll back to. Available: {{ releases.stdout_lines }}"
+        quiet: true
+
+    - name: Point current.jar at {{ target_jar | basename }}
+      ansible.builtin.file:
+        src: "{{ target_jar }}"
+        dest: "{{ app_home }}/current.jar"
+        state: link
+        force: true
+
+    - name: Restart application and wait for health check
+      ansible.builtin.include_tasks: tasks/restart.yml
+
+    - name: Rollback summary
+      ansible.builtin.debug:
+        msg: "Rolled back {{ inventory_hostname }} from {{ current.stat.lnk_source | default('?') | basename }} to {{ target_jar | basename }}"

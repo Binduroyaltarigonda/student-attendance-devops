@@ -1,0 +1,109 @@
+---
+# Deploys the Student Attendance jar built by Maven.
+#
+# Run by Jenkins:  ansible-playbook deploy.yml --limit local -e artifact_path=... -e app_version=42
+# Run by hand:     cd ansible && ansible-playbook deploy.yml --limit local
+#
+# Steps: check artifact -> (Linux) install Java + create user -> copy jar as a new release
+#        -> write config -> restart app -> wait for /actuator/health = UP -> clean old releases
+
+- name: Deploy Online Student Attendance System
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Check that the Maven artifact exists on the Jenkins machine
+      ansible.builtin.stat:
+        path: "{{ artifact_path }}"
+      delegate_to: localhost
+      become: false
+      run_once: true  # noqa run-once[task]
+      register: artifact
+
+    - name: Fail early if the jar is missing
+      ansible.builtin.assert:
+        that: artifact.stat.exists
+        fail_msg: "Jar not found at {{ artifact_path }}. Run 'mvn package' first."
+        quiet: true
+      run_once: true  # noqa run-once[task]
+
+    # ---------- Linux server preparation ----------
+    - name: Install Java 17 (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name: openjdk-17-jre-headless
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      when: install_java | bool and ansible_facts['os_family'] == 'Debian'
+
+    - name: Install Java 17 (RHEL/CentOS/Amazon Linux)
+      ansible.builtin.dnf:
+        name: java-17-openjdk-headless
+        state: present
+      when: install_java | bool and ansible_facts['os_family'] == 'RedHat'
+
+    - name: Create application user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        system: true
+        shell: /usr/sbin/nologin
+        home: "{{ app_home }}"
+        create_home: false
+      when: create_app_user | bool
+
+    # ---------- Directories and release ----------
+    - name: Create application directories
+      ansible.builtin.file:
+        path: "{{ app_home }}/{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        mode: "0755"
+      loop:
+        - ""
+        - releases
+        - config
+        - data
+        - logs
+
+    - name: Copy jar as a new release
+      ansible.builtin.copy:
+        src: "{{ artifact_path }}"
+        dest: "{{ app_home }}/releases/{{ app_name }}-{{ app_version }}.jar"
+        owner: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Point current.jar at the new release
+      ansible.builtin.file:
+        src: "{{ app_home }}/releases/{{ app_name }}-{{ app_version }}.jar"
+        dest: "{{ app_home }}/current.jar"
+        state: link
+        force: true
+        owner: "{{ app_user }}"
+
+    - name: Write application config
+      ansible.builtin.template:
+        src: application.properties.j2
+        dest: "{{ app_home }}/config/application.properties"
+        owner: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Restart application and wait for health check
+      ansible.builtin.include_tasks: tasks/restart.yml
+
+    - name: Remove old releases (keep the newest {{ keep_releases }})
+      ansible.builtin.shell: |
+        set -o pipefail
+        cd "{{ app_home }}/releases"
+        ls -1t *.jar | tail -n +{{ keep_releases | int + 1 }} | while read -r f; do rm -f -- "$f"; echo "removed $f"; done
+      args:
+        executable: /bin/bash
+      register: cleanup
+      changed_when: cleanup.stdout | length > 0
+
+    - name: Deployment summary
+      ansible.builtin.debug:
+        msg:
+          - "Deployed build {{ app_version }} (commit {{ git_commit }}) to {{ inventory_hostname }}"
+          - "App home: {{ app_home }}"
+          - "URL: http://{{ ansible_host | default(inventory_hostname) }}:{{ app_port }}"
+          - "Health: {{ health.json.status }}"

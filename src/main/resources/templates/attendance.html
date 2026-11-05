@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Mark Attendance')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+
+<main class="container">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <section class="page-head">
+        <div>
+            <h1>Mark Attendance</h1>
+            <p class="muted" th:text="${#temporals.format(date, 'EEEE, dd MMMM yyyy')}">Date</p>
+        </div>
+        <form th:action="@{/attendance}" method="get" class="inline-form">
+            <input type="date" name="date" th:value="${date}" th:max="${maxDate}">
+            <button type="submit" class="btn ghost">Load date</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <p class="muted" th:if="${#lists.isEmpty(students)}">
+            No students yet. <a th:href="@{/students}">Add students</a> first.
+        </p>
+
+        <form th:unless="${#lists.isEmpty(students)}" th:action="@{/attendance}" method="post" id="attendance-form">
+            <input type="hidden" name="date" th:value="${date}">
+
+            <div class="card-head">
+                <h2>
+                    <span th:text="${#maps.size(statuses)}">0</span> of
+                    <span th:text="${#lists.size(students)}">0</span> already marked
+                </h2>
+                <div class="actions">
+                    <button type="button" class="btn ghost small" data-mark="PRESENT">All present</button>
+                    <button type="button" class="btn ghost small" data-mark="ABSENT">All absent</button>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                <tr><th>Roll No.</th><th>Name</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="s : ${students}"
+                    th:with="current=${statuses.get(s.id) != null ? statuses.get(s.id).name() : 'PRESENT'}">
+                    <td class="mono" th:text="${s.rollNumber}">25MCA001</td>
+                    <td>
+                        <span th:text="${s.name}">Name</span>
+                        <small class="muted block" th:if="${statuses.get(s.id) == null}">not marked yet</small>
+                    </td>
+                    <td>
+                        <div class="segmented">
+                            <label th:each="st : ${allStatuses}" th:class="${'seg ' + #strings.toLowerCase(st.name())}">
+                                <input type="radio" th:name="|status_${s.id}|" th:value="${st.name()}"
+                                       th:checked="${current == st.name()}">
+                                <span th:text="${#strings.capitalize(#strings.toLowerCase(st.name()))}">Present</span>
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="form-foot">
+                <button type="submit" class="btn primary">Save attendance</button>
+            </div>
+        </form>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+    document.querySelectorAll('[data-mark]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var value = btn.getAttribute('data-mark');
+            document.querySelectorAll('#attendance-form input[type=radio][value="' + value + '"]')
+                .forEach(function (r) { r.checked = true; });
+        });
+    });
+</script>
+</body>
+</html>
